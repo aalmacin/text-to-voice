@@ -9,7 +9,6 @@ import (
 type Word struct {
 	english string
 	french  string
-	tag     string
 }
 
 func main() {
@@ -25,7 +24,7 @@ func main() {
 	}
 
 	for _, line := range csvLines {
-		word := Word{line[0], line[1], line[2]}
+		word := Word{line[0], line[1]}
 		fmt.Println(word)
 	}
 
