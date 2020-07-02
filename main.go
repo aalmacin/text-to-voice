@@ -51,6 +51,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer csvFile.Close()
 
 	csvLines, err := csv.NewReader(csvFile).ReadAll()
 	if err != nil {
@@ -74,6 +75,5 @@ func main() {
 		fmt.Printf("Completed: %s\n", <-c)
 	}
 
-	defer csvFile.Close()
 	fmt.Println("DONE")
 }
