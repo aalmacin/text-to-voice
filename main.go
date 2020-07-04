@@ -16,7 +16,11 @@ type Word struct {
 	french  string
 }
 
-func synthesizeSpeech(svc *polly.Polly, word Word, c chan string) {
+type UserInput struct {
+	Filename string
+}
+
+func synthesizeSpeech(svc *polly.Polly, word Word, i int, c chan string) {
 	input := &polly.SynthesizeSpeechInput{
 		OutputFormat: aws.String("mp3"),
 		Text:         aws.String(word.french),
@@ -28,7 +32,7 @@ func synthesizeSpeech(svc *polly.Polly, word Word, c chan string) {
 		panic(err)
 	}
 
-	outFile, err := os.Create(fmt.Sprintf("mp3s/%s.mp3", word.english))
+	outFile, err := os.Create(fmt.Sprintf("mp3s/%d-%s.mp3", i+1, word.english))
 	if err != nil {
 		c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
 		panic(err)
@@ -46,7 +50,17 @@ func synthesizeSpeech(svc *polly.Polly, word Word, c chan string) {
 }
 
 func main() {
-	csvFile, err := os.Open("input.csv")
+	args := os.Args[1:]
+
+	if len(args) == 0 {
+		panic("Filename is required")
+	}
+
+	ui := UserInput{
+		args[0],
+	}
+
+	csvFile, err := os.Open(ui.Filename)
 
 	if err != nil {
 		panic(err)
@@ -66,9 +80,9 @@ func main() {
 
 	c := make(chan string)
 
-	for _, line := range csvLines {
+	for i, line := range csvLines {
 		word := Word{line[0], line[1]}
-		go synthesizeSpeech(svc, word, c)
+		go synthesizeSpeech(svc, word, i, c)
 	}
 
 	for i := 0; i < len(csvLines); i++ {
