@@ -16,3 +16,4 @@
 #
 mp3s/*.mp3
 *.csv
+.metals
