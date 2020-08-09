@@ -12,6 +12,7 @@ import (
 )
 
 type Word struct {
+	id      string
 	english string
 	french  string
 }
@@ -21,32 +22,36 @@ type UserInput struct {
 }
 
 func synthesizeSpeech(svc *polly.Polly, word Word, i int, c chan string) {
-	input := &polly.SynthesizeSpeechInput{
-		OutputFormat: aws.String("mp3"),
-		Text:         aws.String(word.french),
-		VoiceId:      aws.String("Celine"),
-	}
-	output, err := svc.SynthesizeSpeech(input)
-	if err != nil {
-		c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
-		panic(err)
-	}
+	exists := "exists"
+	fileName := fmt.Sprintf("mp3s/%s.mp3", word.id)
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		input := &polly.SynthesizeSpeechInput{
+			OutputFormat: aws.String("mp3"),
+			Text:         aws.String(word.french),
+			VoiceId:      aws.String("Celine"),
+		}
+		output, err := svc.SynthesizeSpeech(input)
+		if err != nil {
+			c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
+			panic(err)
+		}
 
-	outFile, err := os.Create(fmt.Sprintf("mp3s/%d-%s.mp3", i+1, word.english))
-	if err != nil {
-		c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
-		panic(err)
+		outFile, err := os.Create(fileName)
+		if err != nil {
+			c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
+			panic(err)
+		}
+
+		defer outFile.Close()
+
+		_, err = io.Copy(outFile, output.AudioStream)
+		if err != nil {
+			c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
+			panic(err)
+		}
+		exists = "created"
 	}
-
-	defer outFile.Close()
-
-	_, err = io.Copy(outFile, output.AudioStream)
-	if err != nil {
-		c <- fmt.Sprintf("Failed %s. Err: %s", word.english, err)
-		panic(err)
-	}
-
-	c <- fmt.Sprintf("Success: %s", word.english)
+	c <- fmt.Sprintf("Success\nAction: %s\nWord: %s", exists, word.english)
 }
 
 func main() {
@@ -81,7 +86,7 @@ func main() {
 	c := make(chan string)
 
 	for i, line := range csvLines {
-		word := Word{line[0], line[1]}
+		word := Word{line[0], line[1], line[2]}
 		go synthesizeSpeech(svc, word, i, c)
 	}
 
